@@ -5,7 +5,10 @@ import { LoginDto, RegisterDto } from './dto';
 import { Public } from 'src/common/decorators';
 
 @ApiTags('Auth')
-@Controller('auth')
+@Controller({
+  path: 'auth',
+  version: '1',
+})
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

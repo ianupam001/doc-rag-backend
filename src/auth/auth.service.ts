@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -6,6 +10,7 @@ import { JwtPayload, Tokens } from './types';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client';
 import { RegisterDto } from './dto';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class AuthService {
@@ -22,40 +27,72 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) return null;
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+      if (!user) return null;
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return null;
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) return null;
 
-    return user;
+      return user;
+    } catch (error) {
+      throw new InternalServerErrorException('Error while validating user');
+    }
   }
 
   async login(user: { id: number; email: string; role: UserRole }) {
-    return this.getTokens(user.id, user.email, [user.role]);
+    try {
+      const tokens = await this.getTokens(user.id, user.email, [user.role]);
+      return {
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+        tokens,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Login failed');
+    }
   }
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    try {
+      const hashedPassword = await this.hashData(dto.password);
 
-    if (existingUser) {
-      throw new ForbiddenException('User with this email already exists');
+      const newUser = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          password: hashedPassword,
+          name: dto.name,
+          role: UserRole.VIEWER,
+        },
+      });
+
+      const tokens = await this.getTokens(newUser.id, newUser.email, [
+        newUser.role,
+      ]);
+
+      return {
+        message: 'Registration successful',
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: newUser.role,
+        },
+        tokens,
+      };
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ForbiddenException('Email already exists');
+      }
+      throw new InternalServerErrorException('User registration failed');
     }
-
-    const hashedPassword = await this.hashData(dto.password);
-
-    const newUser = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: hashedPassword,
-        name: dto.name,
-        role: UserRole.VIEWER,
-      },
-    });
-
-    return this.getTokens(newUser.id, newUser.email, [newUser.role]);
   }
 
   // helper function

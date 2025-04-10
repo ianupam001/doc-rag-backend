@@ -10,9 +10,18 @@ import { APP_GUARD } from '@nestjs/core';
 import { AtGaurd, RolesGuard } from './common/guards';
 import { ConfigModule } from '@nestjs/config';
 import { AppRequestLoggerMiddleware } from './common/middlewares/app-request-logger.middleware';
+import { UsersModule } from './users/users.module';
+import { DocumentsModule } from './documents/documents.module';
+import { IngestionModule } from './ingestion/ingestion.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    AuthModule,
+    UsersModule,
+    DocumentsModule,
+    IngestionModule,
+  ],
   controllers: [],
   providers: [
     {
