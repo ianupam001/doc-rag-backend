@@ -1,23 +1,46 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Role } from 'generated/prisma';
-
+import { CustomForbiddenException } from '../execeptions';
+import { JwtPayload } from '../interfaces';
+import { UserRole } from '@prisma/client';
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
-
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.get<Role[]>(
-      'roles',
+    const isPublic = this.reflector.getAllAndOverride('isPublic', [
       context.getHandler(),
-    );
-    if (!requiredRoles) {
+      context.getClass(),
+    ]);
+
+    if (isPublic) return true;
+
+    const requireRoles = this.reflector.getAllAndOverride<UserRole[]>('roles', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requireRoles) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user = request.user as JwtPayload;
 
-    return requiredRoles.some((role) => user.role === role);
+    // const isAuthorize = requireRoles.includes(user.role);
+    const isAuthorize = requireRoles.some((role: UserRole) => {
+      console.log(user.role);
+      return user.role?.includes(role);
+    });
+
+    if (!isAuthorize) {
+      throw new CustomForbiddenException('Un-Authorize User');
+    }
+
+    return true;
   }
 }
