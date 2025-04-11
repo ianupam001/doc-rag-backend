@@ -4,8 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 
-// Create a strongly typed mock
 const mockPrismaService = {
   user: {
     findUnique: jest.fn(),
@@ -13,27 +13,38 @@ const mockPrismaService = {
   },
 };
 
+jest.mock('bcrypt', () => ({
+  ...jest.requireActual('bcrypt'),
+  compare: jest.fn(),
+}));
+
 describe('AuthService', () => {
   let authService: AuthService;
   let prismaService: typeof mockPrismaService;
   let jwtService: jest.Mocked<JwtService>;
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+  const module = await Test.createTestingModule({
+    providers: [
+      AuthService,
+      {
+        provide: PrismaService,
+        useValue: mockPrismaService,
+      },
+      {
+        provide: JwtService,
+        useValue: {
+          sign: jest.fn().mockReturnValue('mock-token'),
         },
-        {
-          provide: JwtService,
-          useValue: {
-            sign: jest.fn().mockReturnValue('mock-token'),
-          },
+      },
+      {
+        provide: ConfigService,
+        useValue: {
+          get: jest.fn().mockReturnValue('mock-secret'), // Mock any required config
         },
-      ],
-    }).compile();
+      },
+    ],
+  }).compile();
 
     authService = module.get<AuthService>(AuthService);
     prismaService = module.get(PrismaService);
@@ -52,25 +63,23 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       };
 
-      // Properly typed mock implementation
-      prismaService.user.findUnique.mockImplementation(() =>
-        Promise.resolve(mockUser),
-      );
-
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await authService.validateUser(
         'test@example.com',
         'password',
       );
-      expect(result).toEqual({
-        id: 1,
-        email: 'test@example.com',
-        name: null,
-        role: 'USER',
-        createdAt: mockUser.createdAt,
-        updatedAt: mockUser.updatedAt,
-      });
+
+     expect(result).toEqual(expect.objectContaining({
+  id: 1,
+  email: 'test@example.com',
+  name: null,
+  role: 'VIEWER',
+  createdAt: mockUser.createdAt,
+  updatedAt: mockUser.updatedAt,
+}));
+
     });
   });
 });

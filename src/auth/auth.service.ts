@@ -27,18 +27,21 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
-    try {
-      const user = await this.prisma.user.findUnique({ where: { email } });
-      if (!user) return null;
+  try {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return null;
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return null;
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return null;
 
-      return user;
-    } catch (error) {
-      throw new InternalServerErrorException('Error while validating user');
-    }
+    // Exclude password before returning
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw new InternalServerErrorException('Error while validating user');
   }
+}
+
 
   async login(user: { id: number; email: string; role: UserRole }) {
     try {

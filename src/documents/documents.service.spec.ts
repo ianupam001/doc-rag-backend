@@ -1,11 +1,25 @@
 import { Test } from '@nestjs/testing';
 import { DocumentsService } from './documents.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { IngestionService } from 'src/ingestion/ingestion.service'; // ADD THIS
 import * as fs from 'fs';
 import * as path from 'path';
 import { mockDocument, mockPrismaService } from 'test/mocks/prisma.mock';
 
-jest.mock('fs');
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  promises: {
+    writeFile: jest.fn(),
+  },
+}));
+
 jest.mock('path');
+
+const mockIngestionService = {
+  ingestDocument: jest.fn(),
+};
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
@@ -15,8 +29,12 @@ describe('DocumentsService', () => {
       providers: [
         DocumentsService,
         {
-          provide: 'PrismaService',
+          provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: IngestionService,
+          useValue: mockIngestionService,
         },
       ],
     }).compile();
@@ -44,7 +62,10 @@ describe('DocumentsService', () => {
       (fs.promises.writeFile as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.create(1, mockFile, { title: 'Test' });
+
       expect(result).toEqual(mockDoc);
+      expect(mockPrismaService.document.create).toHaveBeenCalled();
+      expect(fs.promises.writeFile).toHaveBeenCalled();
     });
   });
 });
