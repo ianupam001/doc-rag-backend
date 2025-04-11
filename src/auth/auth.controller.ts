@@ -1,10 +1,19 @@
 import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto';
-import { Public } from 'src/common/decorators';
+import { LoginDto, RefreshTokenDto, RegisterDto } from './dto';
+import { Public, Roles } from 'src/common/decorators';
+import { GetCurrentUserId } from 'src/common/decorators/get-current-user-id.decorator';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Auth')
+@ApiBearerAuth()
 @Controller({
   path: 'auth',
   version: '1',
@@ -37,5 +46,25 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
+  }
+
+  @Post('refresh')
+  @Roles(UserRole.VIEWER, UserRole.EDITOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed' })
+  @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @ApiBody({ type: RefreshTokenDto })
+  async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @GetCurrentUserId() userId: number,
+  ) {
+    try {
+      return this.authService.refreshToken(
+        userId,
+        refreshTokenDto.refreshToken,
+      );
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 }

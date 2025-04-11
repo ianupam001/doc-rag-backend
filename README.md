@@ -22,6 +22,9 @@ src/
 ├── ingestion/        Microservice integration (Python etc.)
 ├── common/           Guards, interceptors, utils
 ├── main.ts           Entrypoint
+
+scripts/
+└── seed.ts           Admin seeding script
 ```
 
 ## Getting Started
@@ -41,7 +44,22 @@ npm install
 
 ### 3. Create environment file
 
-Create a `.env` file in the root directory and copy the contents from .env.example:
+Create a `.env` file in the root directory and copy the contents from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Update values such as:
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/document-management
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+ACCESS_TOKEN_EXPIRY=15m
+REFRESH_TOKEN_EXPIRY=7d
+PORT=5000
+```
 
 ### 4. Setup Prisma
 
@@ -50,13 +68,23 @@ npx prisma generate
 npx prisma migrate dev --name init
 ```
 
-### 5. Start the server
+### 5. Seed Admin User
+
+To create the initial Admin user, run the following script:
+
+```bash
+npx ts-node scripts/seed.ts
+```
+
+Make sure `ts-node` is installed (`npm install -D ts-node` if missing).
+
+### 6. Start the server
 
 ```bash
 npm run start:dev
 ```
 
-Server will be running on `http://localhost:5000`
+Server will be running at `http://localhost:5000`
 
 ## API Documentation
 
@@ -110,3 +138,4 @@ docker-compose up --build -d
 
 - Login API returns access and refresh tokens
 - Use access token in `Authorization: Bearer <token>` header
+- When expired, use refresh token to get a new access/refresh token pair
