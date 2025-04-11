@@ -63,7 +63,7 @@ Server will be running on `http://localhost:5000`
 Swagger is available at:
 
 ```
-http://localhost:5000/api
+http://localhost:5000/docs
 ```
 
 ## Running Tests
