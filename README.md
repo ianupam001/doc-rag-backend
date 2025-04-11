@@ -41,16 +41,7 @@ npm install
 
 ### 3. Create environment file
 
-Create a `.env` file in the root directory and configure the following:
-
-```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/document-management
-JWT_SECRET=your_jwt_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-ACCESS_TOKEN_EXPIRY=15m
-REFRESH_TOKEN_EXPIRY=7d
-PORT=5000
-```
+Create a `.env` file in the root directory and copy the contents from .env.example:
 
 ### 4. Setup Prisma
 
