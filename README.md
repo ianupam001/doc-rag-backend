@@ -110,4 +110,3 @@ docker-compose up --build -d
 
 - Login API returns access and refresh tokens
 - Use access token in `Authorization: Bearer <token>` header
-- When expired, use refresh token to get a new pair
